@@ -16,15 +16,28 @@ from presidio_analyzer import AnalyzerEngine
 from presidio_anonymizer import AnonymizerEngine
 from presidio_anonymizer.entities import OperatorConfig
 
+
 class Pipeline:
     class Valves(BaseModel):
         pipelines: List[str] = ["*"]
         priority: int = 0
         enabled_for_admins: bool = False
         entities_to_redact: List[str] = [
-            "PERSON", "EMAIL_ADDRESS", "PHONE_NUMBER", "US_SSN", 
-            "CREDIT_CARD", "IP_ADDRESS", "US_PASSPORT", "LOCATION",
-            "DATE_TIME", "NRP", "MEDICAL_LICENSE", "URL"
+            "PERSON",
+            "EMAIL_ADDRESS",
+            "PHONE_NUMBER",
+            "AU_TFN",
+            "AU_ABN",
+            "AU_ACN",
+            "CREDIT_CARD",
+            "IP_ADDRESS",
+            "AU_PASSPORT",
+            "AU_MEDICARE",
+            "AU_ADDRESS",
+            "LOCATION",
+            "DATE_TIME",
+            "AU_DRIVERS_LICENSE",
+            "URL",
         ]
         language: str = "en"
 
@@ -35,8 +48,13 @@ class Pipeline:
         self.valves = self.Valves(
             **{
                 "pipelines": os.getenv("PII_REDACT_PIPELINES", "*").split(","),
-                "enabled_for_admins": os.getenv("PII_REDACT_ENABLED_FOR_ADMINS", "false").lower() == "true",
-                "entities_to_redact": os.getenv("PII_REDACT_ENTITIES", ",".join(self.Valves().entities_to_redact)).split(","),
+                "enabled_for_admins": os.getenv(
+                    "PII_REDACT_ENABLED_FOR_ADMINS", "false"
+                ).lower()
+                == "true",
+                "entities_to_redact": os.getenv(
+                    "PII_REDACT_ENTITIES", ",".join(self.Valves().entities_to_redact)
+                ).split(","),
                 "language": os.getenv("PII_REDACT_LANGUAGE", "en"),
             }
         )
@@ -54,7 +72,7 @@ class Pipeline:
         results = self.analyzer.analyze(
             text=text,
             language=self.valves.language,
-            entities=self.valves.entities_to_redact
+            entities=self.valves.entities_to_redact,
         )
 
         anonymized_text = self.anonymizer.anonymize(
@@ -62,7 +80,7 @@ class Pipeline:
             analyzer_results=results,
             operators={
                 "DEFAULT": OperatorConfig("replace", {"new_value": "[REDACTED]"})
-            }
+            },
         )
 
         return anonymized_text.text
@@ -72,7 +90,11 @@ class Pipeline:
         print(body)
         print(user)
 
-        if user is None or user.get("role") != "admin" or self.valves.enabled_for_admins:
+        if (
+            user is None
+            or user.get("role") != "admin"
+            or self.valves.enabled_for_admins
+        ):
             messages = body.get("messages", [])
             for message in messages:
                 if message.get("role") == "user":
