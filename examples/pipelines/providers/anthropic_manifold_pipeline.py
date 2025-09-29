@@ -65,7 +65,9 @@ class Pipeline:
             {"id": "claude-3-5-sonnet-20241022", "name": "claude-3.5-sonnet"},
             {"id": "claude-3-7-sonnet-20250219", "name": "claude-3.7-sonnet"},
             {"id": "claude-opus-4-20250514", "name": "claude-4-opus"},
+            {"id": "claude-opus-4-1-20250805", "name": "claude-4.1-opus"},
             {"id": "claude-sonnet-4-20250514", "name": "claude-4-sonnet"},
+            {"id": "claude-sonnet-4-5-20250929", "name": "claude-4.5-sonnet"},
         ]
 
     async def on_startup(self):
@@ -168,7 +170,7 @@ class Pipeline:
             }
 
             if body.get("stream", False):
-                supports_thinking = "claude-3-7" in model_id
+                supports_thinking = "claude-3-7" in model_id or "claude-sonnet-4" in model_id or "claude-opus-4" in model_id
                 reasoning_effort = body.get("reasoning_effort", "none")
                 budget_tokens = REASONING_EFFORT_BUDGET_TOKEN_MAP.get(reasoning_effort)
 
