@@ -161,13 +161,30 @@ class Pipeline:
                 "model": model_id,
                 "messages": processed_messages,
                 "max_tokens": body.get("max_tokens", 4096),
-                "temperature": body.get("temperature", 0.8),
-                "top_k": body.get("top_k", 40),
-                "top_p": body.get("top_p", 0.9),
                 "stop_sequences": body.get("stop", []),
                 **({"system": str(system_message)} if system_message else {}),
                 "stream": body.get("stream", False),
             }
+
+            # Handle parameters based on model type
+            # Opus 4.1 and Sonnet 4.5 cannot have both temperature and top_p
+            if "claude-opus-4-1" in model_id or "claude-sonnet-4-5" in model_id:
+                # For these models, only use one of temperature or top_p
+                if body.get("temperature") is not None:
+                    payload["temperature"] = body.get("temperature", 0.8)
+                elif body.get("top_p") is not None:
+                    payload["top_p"] = body.get("top_p", 0.9)
+                else:
+                    # Default to temperature if neither is specified
+                    payload["temperature"] = 0.8
+                # Always remove top_k for these models to be safe
+                if "top_k" in body:
+                    del payload["top_k"]
+            else:
+                # For other models, use the standard parameters
+                payload["temperature"] = body.get("temperature", 0.8)
+                payload["top_k"] = body.get("top_k", 40)
+                payload["top_p"] = body.get("top_p", 0.9)
 
             if body.get("stream", False):
                 supports_thinking = "claude-3-7" in model_id or "claude-sonnet-4" in model_id or "claude-opus-4" in model_id
